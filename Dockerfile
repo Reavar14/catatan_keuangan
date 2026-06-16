@@ -10,17 +10,17 @@ RUN apt-get update && apt-get install -y \
 # Instal Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 1. Kita PINDHKAN WORKDIR ke dalam folder 'backend'
-WORKDIR /var/www/html/backend
+# Tentukan folder kerja di root container
+WORKDIR /var/www/html
 
-# 2. Salin semua file dari folder 'backend' lokal ke WORKDIR container
-COPY . .
+# Salin isi folder backend ke root container
+COPY backend/ .
 
-# 3. Sekarang perintah ini akan berhasil karena file ada di sini
+# Jalankan composer install di root (karena file sekarang ada di sini)
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer install --no-dev --optimize-autoloader
 
-# 4. Pengaturan izin
+# Pengaturan izin
 RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 80
