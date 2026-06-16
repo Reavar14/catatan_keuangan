@@ -1,31 +1,28 @@
-# Stage 1: Build Frontend Vue
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
+FROM php:8.2-cli
 
-# Stage 2: Setup Backend Laravel & Satukan Frontend
-FROM php:8.2-fpm-alpine
-RUN apk add --no-cache nginx supervisor curl libpng-dev libxml2-dev zip unzip
-RUN docker-php-ext-install pdo_mysql bcmath gd
+# 1. Instal dependensi, termasuk postgresql-dev untuk driver PGSQL
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libicu-dev \
+    libzip-dev \
+    libpq-dev \
+    zip \
+    unzip \
+    git \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-configure intl \
+    # Tambahkan pdo_pgsql di sini
+    && docker-php-ext-install pdo_mysql pdo_pgsql gd intl zip
 
-# Ambil Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-WORKDIR /var/www
-
-# Copy seluruh file project
+WORKDIR /var/www/html
 COPY . .
 
-# Pindahkan hasil build Vue ke folder public Laravel agar di-serve bersamaan
-COPY --from=frontend-builder /app/frontend/dist /var/www/backend/public
-
-# Masuk ke folder backend untuk install laravel dependencies
-WORKDIR /var/www/backend
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-EXPOSE 80
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
+EXPOSE 80
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
